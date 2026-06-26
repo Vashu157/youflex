@@ -1,4 +1,5 @@
 import {
+  boolean,
   integer,
   pgTable,
   serial,
@@ -35,8 +36,6 @@ export const profiles = pgTable("profiles", {
 
   bio: text("bio"),
   headline: varchar("headline", { length: 150 }),
-
-  // keep this simple for now
   domain: varchar("domain", { length: 50 }),
 
   leetcodeUsername: varchar("leetcode_username", { length: 100 }),
@@ -56,15 +55,46 @@ export const profiles = pgTable("profiles", {
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
 
-  userId: integer("userId")
+  userId: integer("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-
+  title: varchar("title", { length: 200 }).notNull(),
   content: text("content").notNull(),
+
   upvotes: integer("upvotes").default(0).notNull(),
   downvotes: integer("downvotes").default(0).notNull(),
-  comments: integer("comments").default(0).notNull(),
+
+  discussionCount: integer("discussion_count")
+    .default(0)
+    .notNull(),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+export const discussions = pgTable("discussions", {
+  id: serial("id").primaryKey(),
+
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, {
+      onDelete: "cascade",
+    }),
+
+  postId: integer("post_id")
+    .notNull()
+    .references(() => posts.id, {
+      onDelete: "cascade",
+    }),
+
+  parentId: integer("parent_id").references(() => discussions.id, {
+    onDelete: "cascade",
+  }),
+
+  content: text("content").notNull(),
+
+  isEdited: boolean("is_edited").default(false).notNull(),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -1,6 +1,7 @@
 const posts = [
   {
     id: "post-1",
+    title: "Shipping the first rough version",
     author: {
       name: "Aarav Mehta",
       username: "aaravbuilds",
@@ -14,6 +15,7 @@ const posts = [
   },
   {
     id: "post-2",
+    title: "Learning in public without overthinking it",
     author: {
       name: "Maya Kapoor",
       username: "mayamakes",
@@ -27,6 +29,7 @@ const posts = [
   },
   {
     id: "post-3",
+    title: "Five lessons from rebuilding my portfolio",
     author: {
       name: "Rohan Singh",
       username: "rohan.codes",
@@ -40,6 +43,7 @@ const posts = [
   },
   {
     id: "post-4",
+    title: "Designing with one accent color",
     author: {
       name: "Ishita Verma",
       username: "ishita.designs",
@@ -53,6 +57,7 @@ const posts = [
   },
   {
     id: "post-5",
+    title: "The ten-character bug fix",
     author: {
       name: "Kabir Shah",
       username: "kabirships",
