@@ -42,7 +42,7 @@ export default function ProfileCard({
           </div>
 
           <div className="flex flex-col">
-            <h2 className="text-xl font-bold text-orange-600">{name}</h2>
+            <h2 className="text-xl font-bold text-orange-600">{fullName}</h2>
             <p className="text-sm text-gray-600">@{username}</p>
           </div>
         </div>

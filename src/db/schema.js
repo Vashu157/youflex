@@ -2,6 +2,7 @@ import {
   boolean,
   integer,
   pgTable,
+  primaryKey,
   serial,
   text,
   timestamp,
@@ -54,20 +55,16 @@ export const profiles = pgTable("profiles", {
 
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
-
   userId: integer("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 200 }).notNull(),
   content: text("content").notNull(),
-
   upvotes: integer("upvotes").default(0).notNull(),
   downvotes: integer("downvotes").default(0).notNull(),
-
   discussionCount: integer("discussion_count")
     .default(0)
     .notNull(),
-
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -98,3 +95,30 @@ export const discussions = pgTable("discussions", {
 
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const postVotes = pgTable("post_votes",
+  {
+    postId: integer("post_id")
+      .notNull()
+      .references(() => posts.id, {
+        onDelete: "cascade",
+      }),
+
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, {
+        onDelete: "cascade",
+      }),
+
+    vote: integer("vote").notNull(), // 1 = upvote, -1 = downvote
+
+    createdAt: timestamp("created_at")
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.postId, table.userId],
+    }),
+  })
+);

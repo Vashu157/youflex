@@ -66,7 +66,6 @@ export default function RichTextEditor({ onPost }) {
       >
         Post
       </button>
-
     </div>
   );
 }
