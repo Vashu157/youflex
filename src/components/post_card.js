@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import RelativeTime from "@/components/relative_time";
-import { togglePostVote } from "@/services/community.services";
+import { deletePost, togglePostVote } from "@/actions/community.actions";
 
 // Helper function to extract initials from a full name
 function getInitials(name) {
@@ -79,7 +80,12 @@ function MoreIcon() {
   );
 }
 
-export default function PostCard({ post, href = null }) {
+export default function PostCard({
+  post,
+  href = null,
+  showDeleteAction = false,
+}) {
+  const router = useRouter();
   const createdAt = getDateValue(post.createdAt);
   const createdAtFallback = formatCreatedAtFallback(createdAt);
   const initialUserVote =
@@ -92,6 +98,7 @@ export default function PostCard({ post, href = null }) {
     userVote: initialUserVote,
   });
   const [voteError, setVoteError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [isPending, startTransition] = useTransition();
   const commentHref = href ? href : "#discussion";
   const isUpvoted = voteState.userVote === 1;
@@ -116,22 +123,43 @@ export default function PostCard({ post, href = null }) {
     });
   }
 
+  function handleDelete() {
+    const confirmed = window.confirm("Delete this post?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeleteError("");
+
+    startTransition(async () => {
+      const result = await deletePost(post.id);
+
+      if (!result?.success) {
+        setDeleteError(result?.message ?? "Unable to delete post");
+        return;
+      }
+
+      router.refresh();
+    });
+  }
+
   return (
-    <article className="w-full max-w-2xl overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-      <header className="flex items-center gap-3 px-5 pt-5">
+    <article className="w-full max-w-2xl overflow-hidden rounded-2xl glass-card transition-all duration-300 hover:shadow-lg">
+      <header className="flex items-center gap-3 px-6 pt-6">
         <div
           aria-hidden="true"
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-orange-600 text-sm font-bold text-white uppercase"
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-orange-400 text-sm font-bold text-white uppercase shadow-sm"
         >
           {getInitials(post.fullName)}
         </div>
 
         <div className="min-w-0 flex-1">
-          <h2 className="truncate font-semibold text-zinc-950 dark:text-zinc-50">
+          <h2 className="truncate font-semibold text-foreground text-lg">
             {post.fullName}
           </h2>
-          <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
-            @{post.username} -{" "}
+          <p className="truncate text-sm text-muted-foreground font-medium">
+            @{post.username} •{" "}
             <RelativeTime
               value={createdAt}
               fallback={createdAtFallback}
@@ -140,58 +168,69 @@ export default function PostCard({ post, href = null }) {
           </p>
         </div>
 
-        <span
-          aria-hidden="true"
-          className="rounded-full p-2 text-zinc-500 dark:text-zinc-400"
-        >
-          <MoreIcon />
-        </span>
+        {showDeleteAction ? (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={handleDelete}
+            className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 hover:border-red-300 disabled:cursor-not-allowed disabled:opacity-70 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300 dark:hover:bg-red-900/40"
+          >
+            Delete
+          </button>
+        ) : (
+          <span
+            aria-hidden="true"
+            className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted"
+          >
+            <MoreIcon />
+          </span>
+        )}
       </header>
 
       {href ? (
         <Link
           href={href}
-          className="block transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:hover:bg-zinc-900/70 dark:focus-visible:ring-zinc-600"
+          className="block transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:bg-muted/50"
         >
-          <div className="px-5 pt-3 font-semibold text-zinc-950 dark:text-zinc-50">
+          <div className="px-6 pt-4 font-bold text-foreground text-xl">
             {post.title}
           </div>
           <div
-            className="space-y-3 px-5 py-5 leading-7 text-zinc-700 dark:text-zinc-300"
+            className="space-y-3 px-6 py-4 leading-relaxed text-muted-foreground prose prose-zinc dark:prose-invert max-w-none"
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
         </Link>
       ) : (
         <>
-          <div className="px-5 pt-3 font-semibold text-zinc-950 dark:text-zinc-50">
+          <div className="px-6 pt-4 font-bold text-foreground text-xl">
             {post.title}
           </div>
           <div
-            className="space-y-3 px-5 py-5 leading-7 text-zinc-700 dark:text-zinc-300"
+            className="space-y-3 px-6 py-4 leading-relaxed text-muted-foreground prose prose-zinc dark:prose-invert max-w-none"
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
         </>
       )}
 
-      <footer className="flex items-center gap-2 border-t border-zinc-100 px-4 py-3 dark:border-zinc-800">
-        <div className="flex items-center rounded-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
+      <footer className="flex items-center gap-3 border-t border-card-border px-6 py-4 bg-muted/20">
+        <div className="flex items-center rounded-full bg-card-bg border border-card-border shadow-sm overflow-hidden">
           <button
             type="button"
             aria-label={isUpvoted ? "Remove upvote" : "Upvote post"}
             aria-pressed={isUpvoted}
             disabled={isPending}
             onClick={() => handleVote(1)}
-            className={`flex items-center gap-2 rounded-l-full px-3 py-2 text-sm font-medium transition ${
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors ${
               isUpvoted
-                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
-                : "text-zinc-600 hover:bg-emerald-50 hover:text-emerald-600 dark:text-zinc-400 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400"
+                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                : "text-muted-foreground hover:bg-muted hover:text-emerald-600 dark:hover:text-emerald-400"
             } ${isPending ? "cursor-not-allowed opacity-70" : ""}`}
           >
             <UpvoteIcon active={isUpvoted} />
             <span>{voteState.upvotes}</span>
           </button>
 
-          <div className="w-[1px] h-4 bg-zinc-200 dark:bg-zinc-700" />
+          <div className="w-[1px] h-5 bg-card-border" />
 
           <button
             type="button"
@@ -199,10 +238,10 @@ export default function PostCard({ post, href = null }) {
             aria-pressed={isDownvoted}
             disabled={isPending}
             onClick={() => handleVote(-1)}
-            className={`flex items-center gap-2 rounded-r-full px-3 py-2 text-sm font-medium transition ${
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors ${
               isDownvoted
-                ? "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300"
-                : "text-zinc-600 hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+                : "text-muted-foreground hover:bg-muted hover:text-red-600 dark:hover:text-red-400"
             } ${isPending ? "cursor-not-allowed opacity-70" : ""}`}
           >
             <DownvoteIcon active={isDownvoted} />
@@ -212,16 +251,16 @@ export default function PostCard({ post, href = null }) {
 
         <Link
           href={commentHref}
-          className="flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-zinc-600 transition hover:bg-blue-50 hover:text-blue-600 dark:text-zinc-400 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
+          className="flex items-center gap-2 rounded-full border border-card-border bg-card-bg px-4 py-2 text-sm font-semibold text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-accent"
         >
           <CommentIcon />
           <span>{post.discussionCount} comments</span>
         </Link>
       </footer>
 
-      {voteError ? (
-        <p className="px-5 pb-4 text-sm text-red-600 dark:text-red-400">
-          {voteError}
+      {voteError || deleteError ? (
+        <p className="px-6 pb-5 text-sm font-medium text-red-600 dark:text-red-400">
+          {voteError || deleteError}
         </p>
       ) : null}
     </article>

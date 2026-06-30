@@ -1,155 +1,113 @@
 "use server";
+
 import { db } from "@/db";
 import { profiles, users } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { z } from "zod";
-import { auth } from "@/auth";
-import { revalidatePath } from "next/cache";
+import { asc, eq, ilike, or } from "drizzle-orm";
+import { cache } from "react";
 
-const updateProfileSchema = z.object({
-  fullName: z.string().trim().min(2, "Full name is too short").max(100),
-  bio: z.string().trim().max(300).optional().or(z.literal("")),
-  headline: z.string().trim().max(120).optional().or(z.literal("")),
-  //domain: z.string().trim().max(50).optional().or(z.literal("")),
-  leetcodeUsername: z.string().trim().max(50).optional().or(z.literal("")),
-  codeforcesUsername: z.string().trim().max(50).optional().or(z.literal("")),
-  githubUrl: z.string().trim().url("Invalid GitHub URL").optional().or(z.literal("")),
-  linkedinUrl: z.string().trim().url("Invalid LinkedIn URL").optional().or(z.literal("")),
-  replitUrl: z.string().trim().url("Invalid Replit URL").optional().or(z.literal("")),
-  websiteUrl: z.string().trim().url("Invalid website URL").optional().or(z.literal("")),
-  //avatarUrl: z.string().trim().url("Invalid avatar URL").optional().or(z.literal("")),
-});
-export async function fetchAllProfiles() {
+const profileSelect = {
+  userId: users.id,
+  username: users.username,
+  fullName: users.fullName,
+  email: users.email,
+  bio: profiles.bio,
+  headline: profiles.headline,
+  domain: profiles.domain,
+  leetcodeUsername: profiles.leetcodeUsername,
+  codeforcesUsername: profiles.codeforcesUsername,
+  githubUrl: profiles.githubUrl,
+  linkedinUrl: profiles.linkedinUrl,
+  replitUrl: profiles.replitUrl,
+  websiteUrl: profiles.websiteUrl,
+  avatarUrl: profiles.avatarUrl,
+  joinedAt: users.createdAt,
+  profileUpdatedAt: profiles.updatedAt,
+};
+
+export const fetchAllProfiles = cache(async () => {
   try {
-    const allProfiles = await db
-      .select({
-        userId: users.id,
-        username: users.username,
-        fullName: users.fullName,
-        email: users.email,
-        bio: profiles.bio,
-        headline: profiles.headline,
-        domain: profiles.domain,
-        leetcodeUsername: profiles.leetcodeUsername,
-        codeforcesUsername: profiles.codeforcesUsername,
-        githubUrl: profiles.githubUrl,
-        linkedinUrl: profiles.linkedinUrl,
-        replitUrl: profiles.replitUrl,
-        websiteUrl: profiles.websiteUrl,
-        avatarUrl: profiles.avatarUrl,
-      })
+    return await db
+      .select(profileSelect)
       .from(profiles)
-      .innerJoin(users, eq(profiles.userId, users.id));
-      console.log(allProfiles)
-      return allProfiles
+      .innerJoin(users, eq(profiles.userId, users.id))
+      .orderBy(asc(users.fullName));
   } catch (error) {
-     console.error("error in fetching profiles",error);
-     return null;
+    console.error("error in fetching profiles", error);
+    return [];
   }
-}
-export async function fetchProfileByUserId(userId) {
+});
+
+export const fetchProfileByUserId = cache(async (userId) => {
   try {
     const numericId = Number(userId);
+
+    if (!Number.isInteger(numericId) || numericId <= 0) {
+      return null;
+    }
+
     const result = await db
-      .select({
-        userId: users.id,
-        username: users.username,
-        fullName: users.fullName,
-        email: users.email,
-        bio: profiles.bio,
-        headline: profiles.headline,
-        domain: profiles.domain,
-        leetcodeUsername: profiles.leetcodeUsername,
-        codeforcesUsername: profiles.codeforcesUsername,
-        githubUrl: profiles.githubUrl,
-        linkedinUrl: profiles.linkedinUrl,
-        replitUrl: profiles.replitUrl,
-        websiteUrl: profiles.websiteUrl,
-        avatarUrl: profiles.avatarUrl,
-      })
+      .select(profileSelect)
       .from(users)
       .innerJoin(profiles, eq(users.id, profiles.userId))
-      .where(eq(users.id, userId));
+      .where(eq(users.id, numericId));
 
     return result[0] ?? null;
   } catch (error) {
     console.error("error fetching profile by userId", error);
     return null;
   }
-}
-export async function updateProfile(formData) {
+});
+
+export const fetchProfileByUsername = cache(async (username) => {
   try {
-    const session = await auth();
+    const normalizedUsername =
+      typeof username === "string" ? username.trim().toLowerCase() : "";
 
-    if (!session?.user?.id) {
-      return {
-        success: false,
-        message: "Unauthorized",
-      };
+    if (!normalizedUsername) {
+      return null;
     }
 
-    const rawData =
-      formData instanceof FormData
-        ? {
-            fullName: formData.get("fullName"),
-            bio: formData.get("bio"),
-            headline: formData.get("headline"),
-            //domain: formData.get("domain"),
-            leetcodeUsername: formData.get("leetcodeUsername"),
-            codeforcesUsername: formData.get("codeforcesUsername"),
-            githubUrl: formData.get("githubUrl"),
-            linkedinUrl: formData.get("linkedinUrl"),
-            replitUrl: formData.get("replitUrl"),
-            websiteUrl: formData.get("websiteUrl"),
-            //avatarUrl: formData.get("avatarUrl"),
-          }
-        : formData;
+    const result = await db
+      .select(profileSelect)
+      .from(users)
+      .innerJoin(profiles, eq(users.id, profiles.userId))
+      .where(eq(users.username, normalizedUsername));
 
-    const parsed = updateProfileSchema.safeParse(rawData);
-
-    if (!parsed.success) {
-      return {
-        success: false,
-        message: parsed.error.issues[0]?.message || "Invalid input",
-      };
-    }
-
-    const data = parsed.data;
-    const userId = Number(session.user.id);
-
-    await db
-      .update(users)
-      .set({
-        fullName: data.fullName,
-      })
-      .where(eq(users.id, userId));
-
-    await db
-      .update(profiles)
-      .set({
-        bio: data.bio || null,
-        headline: data.headline || null,
-        domain: data.domain || null,
-        leetcodeUsername: data.leetcodeUsername || null,
-        codeforcesUsername: data.codeforcesUsername || null,
-        githubUrl: data.githubUrl || null,
-        linkedinUrl: data.linkedinUrl || null,
-        replitUrl: data.replitUrl || null,
-        websiteUrl: data.websiteUrl || null,
-        avatarUrl: data.avatarUrl || null,
-      })
-      .where(eq(profiles.userId, userId));
-      console.log("updated profile");
-      revalidatePath("/profile");
-    return {
-      success: true,
-      message: "Profile updated successfully",
-    };
+    return result[0] ?? null;
   } catch (error) {
-    console.error("update profile error:", error);
-    return {
-      success: false,
-      message: "Failed to update profile",
-    };
+    console.error("error fetching profile by username", error);
+    return null;
   }
-}
+});
+
+export const searchUsers = cache(async (query) => {
+  try {
+    const trimmedQuery = typeof query === "string" ? query.trim() : "";
+
+    if (!trimmedQuery) {
+      return [];
+    }
+
+    return await db
+      .select({
+        userId: users.id,
+        username: users.username,
+        fullName: users.fullName,
+        domain: profiles.domain,
+        avatarUrl: profiles.avatarUrl,
+      })
+      .from(users)
+      .innerJoin(profiles, eq(users.id, profiles.userId))
+      .where(
+        or(
+          ilike(users.username, `%${trimmedQuery}%`),
+          ilike(users.fullName, `%${trimmedQuery}%`)
+        )
+      )
+      .orderBy(asc(users.fullName))
+      .limit(24);
+  } catch (error) {
+    console.error("error searching users", error);
+    return [];
+  }
+});

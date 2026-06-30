@@ -3,11 +3,14 @@ import PostCard from "@/components/post_card";
 import { getDiscussions, getPostById } from "@/services/community.services";
 import DiscussionForm from "@/components/DiscussionForm";
 import Discussion from "@/components/Discussion";
+import { auth } from "@/auth";
 
 export default async function PostPage({ params }) {
   const { postId } = await params;
+  const session = await auth();
+  const currentUserId = Number(session?.user?.id ?? 0);
 
-  const post = await getPostById(Number(postId));
+  const post = await getPostById(Number(postId), currentUserId);
 
   if (!post) notFound();
 
@@ -30,6 +33,7 @@ export default async function PostPage({ params }) {
               discussion={discussion}
               discussions={discussions}
               postId={post.id}
+              currentUserId={currentUserId}
             />
           ))}
       </section>
