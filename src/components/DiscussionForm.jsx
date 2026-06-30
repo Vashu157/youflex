@@ -1,21 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { createDiscussion } from "@/actions/community.actions";
+import { createDiscussion } from "@/services/community.services";
 import { useRouter } from "next/navigation";
+
 
 export default function DiscussionForm({ postId, parentId = null }) {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const router = useRouter();
-
   async function handleSubmit(e) {
     e.preventDefault();
 
     if (!content.trim()) return;
 
-    setError("");
     setLoading(true);
 
     const result = await createDiscussion({
@@ -30,7 +28,7 @@ export default function DiscussionForm({ postId, parentId = null }) {
       setContent("");
       router.refresh();
     } else {
-      setError(result.message);
+      alert(result.message);
     }
   }
 
@@ -59,8 +57,6 @@ export default function DiscussionForm({ postId, parentId = null }) {
           ? "Post Discussion"
           : "Reply"}
       </button>
-
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
     </form>
   );
 }

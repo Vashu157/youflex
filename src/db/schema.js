@@ -1,6 +1,5 @@
 import {
   boolean,
-  index,
   integer,
   pgTable,
   primaryKey,
@@ -68,10 +67,7 @@ export const posts = pgTable("posts", {
     .notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => [
-  index("posts_created_at_idx").on(table.createdAt),
-  index("posts_user_id_idx").on(table.userId),
-]);
+});
 export const discussions = pgTable("discussions", {
   id: serial("id").primaryKey(),
 
@@ -98,11 +94,7 @@ export const discussions = pgTable("discussions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => [
-  index("discussions_post_id_idx").on(table.postId),
-  index("discussions_parent_id_idx").on(table.parentId),
-  index("discussions_created_at_idx").on(table.createdAt),
-]);
+});
 
 export const postVotes = pgTable("post_votes",
   {

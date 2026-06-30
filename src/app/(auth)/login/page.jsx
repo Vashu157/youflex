@@ -145,12 +145,15 @@ export default function LoginPage() {
     if (isLogin) {
       const loginResult = await signIn("credentials", {
         redirect: false,
-        identifier: form.identifier.trim().toLowerCase(),
+
+        // IMPORTANT:
+        // this assumes your auth.js authorize() expects "email"
+        email: form.identifier.trim().toLowerCase(),
         password: form.password,
       });
 
       if (loginResult?.error) {
-        setMessage("Invalid username, email, or password");
+        setMessage("Invalid email or password");
         return;
       }
 
